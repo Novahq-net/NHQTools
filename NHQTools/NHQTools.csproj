@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{BA34DD3C-6C5A-4482-9645-8789A3843059}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>NHQTools</RootNamespace>
+    <AssemblyName>NHQTools</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Extensions\ByteReader.cs" />
+    <Compile Include="Extensions\ByteWriter.cs" />
+    <Compile Include="Extensions\ListExtensions.cs" />
+    <Compile Include="Extensions\NumberExtensions.cs" />
+    <Compile Include="Extensions\RegexExtensions.cs" />
+    <Compile Include="Extensions\StreamExtensions.cs" />
+    <Compile Include="Extensions\TextReaderExtensions.cs" />
+    <Compile Include="FileFormats\CBinFile.cs" />
+    <Compile Include="FileFormats\Fnt.cs" />
+    <Compile Include="FileFormats\Jpg.cs" />
+    <Compile Include="FileFormats\PakFile.cs" />
+    <Compile Include="FileFormats\Png.cs" />
+    <Compile Include="FileFormats\RTxtFile.cs" />
+    <Compile Include="FileFormats\ITextSerializer.cs" />
+    <Compile Include="Helpers\CenteredDialogHelper.cs" />
+    <Compile Include="FileFormats\Wav.cs" />
+    <Compile Include="Themes\BaseFormTheme.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Utilities\ArgumentParser.cs" />
+    <Compile Include="Extensions\ByteExtensions.cs" />
+    <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="FileFormats\Bmp.cs" />
+    <Compile Include="FileFormats\Dds.cs" />
+    <Compile Include="FileFormats\Pak.cs" />
+    <Compile Include="FileFormats\Pcx.cs" />
+    <Compile Include="FileFormats\Txt.cs" />
+    <Compile Include="Utilities\Compare.cs" />
+    <Compile Include="Utilities\Images.cs" />
+    <Compile Include="FileFormats\R16.cs" />
+    <Compile Include="FileFormats\Tga.cs" />
+    <Compile Include="FileFormats\Bfc.cs" />
+    <Compile Include="FileFormats\CBin.cs" />
+    <Compile Include="FileFormats\RTxt.cs" />
+    <Compile Include="FileFormats\Scr.cs" />
+    <Compile Include="FileFormats\Definitions.cs" />
+    <Compile Include="Themes\ThemeManager.cs" />
+    <Compile Include="Exceptions\FileNameException.cs" />
+    <Compile Include="Extensions\BindingListExtensions.cs" />
+    <Compile Include="Extensions\DateTimeExtensions.cs" />
+    <Compile Include="Extensions\DataGridViewExtensions.cs" />
+    <Compile Include="Helpers\ConsoleWindowHelper.cs" />
+    <Compile Include="Exceptions\FileExistsException.cs" />
+    <Compile Include="Helpers\CustomMessageBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Helpers\FileNameHelper.cs" />
+    <Compile Include="Helpers\FileSystemHelper.cs" />
+    <Compile Include="Helpers\ImgButtonHoverHelper.cs" />
+    <Compile Include="Utilities\Common.cs" />
+    <Compile Include="Helpers\ConsoleMessageHelper.cs" />
+    <Compile Include="Helpers\StatusStripHelper.cs" />
+    <Compile Include="Helpers\VisibilityHelper.cs" />
+    <Compile Include="Utilities\Json.cs" />
+    <Compile Include="Helpers\FileDialogHelper.cs" />
+    <Compile Include="FileFormats\Pff\PffCrc.cs" />
+    <Compile Include="FileFormats\Pff\PffEntryTable.cs" />
+    <Compile Include="FileFormats\Pff\PffFooter.cs" />
+    <Compile Include="FileFormats\Pff\PffGames.cs" />
+    <Compile Include="FileFormats\Pff\PffHeader.cs" />
+    <Compile Include="FileFormats\Pff\PffFile.cs" />
+    <Compile Include="FileFormats\Pff\PffEntry.cs" />
+    <Compile Include="FileFormats\Pff\PffReader.cs" />
+    <Compile Include="FileFormats\Pff\PffVersion.cs" />
+    <Compile Include="FileFormats\Pff\PffWriter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Helpers\AccessibilityTooltipHelper.cs" />
+    <Compile Include="Helpers\TextBoxPlaceholderHelper.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

@@ -1,0 +1,14 @@
+###################
+Offsets
+###################
+Entry Table Offset: 101
+
+Entry Table Data	Offset	Length
+_anchor.txt	20	15
+01.bin	35	1
+02.bin	36	2
+03.bin	38	3
+04.bin	41	4
+08.bin	45	8
+16.bin	53	16
+32.bin	69	32

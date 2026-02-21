@@ -1,0 +1,37 @@
+# Visual Studio
+*.suo
+*.user
+*.sln.docstates
+[Bb]in/
+[Oo]bj/
+.vs/
+.github/
+Benchmark/*
+
+# Custom
+_*/
+Packages/
+Pack.exe/
+/vendor/
+/node_modules/
+*.html
+TODO.txt
+Notes.txt
+*.userprefs
+*.7z
+*.zip
+*.rar
+*.exe
+*.ini
+*.c
+*- Copy.*
+.env
+.gitnotes
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+Archive.bat
+PFF File Format.txt
+
+*.html
