@@ -6,7 +6,7 @@ Visit [https://novahq.net](https://novahq.net) for more information on NovaLogic
 
 - [NovaLogic File Formats](https://github.com/Novahq-net/NovaResearch/)
 
-## NHQTools
+## NHQTools Library
 
 A .NET Framework 4.8 class library mainly used for handling, parsing, and serializing various file formats used in NovaLogic games. The library provides a unified API for working with these formats, including auto-detection of file types and support for both text-based and binary formats.
 
@@ -23,6 +23,11 @@ The library includes a format registry (`Definitions` / `FormatDef`) and special
 * `NHQTools/` – The core class library with all parsing and serialization logic.
 * `NHQTools/FileFormats/` – Core file format definitions and serializers for various NovaLogic formats.
 * `NHQTools/*/` – Shared library code, utilities, and common logic for both the library and GUI apps.
+
+---
+
+### Tools using `NHQTools.dll`
+- [NovaPff](https://github.com/Novahq-net/NovaPff/)
 
 ---
 
