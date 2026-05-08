@@ -80,14 +80,18 @@ namespace NHQTools.FileFormats.Pff
 
             var validName = FileNameHelper.ValidFileName(newFileName, new FileNameHelper.ValidationOptions
             {
-                EnforceAscii = new FileNameHelper.FileNameRule<bool>(true),
+                EnforceWindows1252 = new FileNameHelper.FileNameRule<bool>(true),
                 MaxLength = new FileNameHelper.FileNameRule<int>(PffVersion.FileNameLength)
             });
 
             if (!validName.IsValid)
                 return false;
 
-            
+            // Reject if another entry (other than this one) already has the same name
+            var duplicate = Entries.FirstOrDefault(e => e != entry && e.FileNameStr.Equals(validName.FileName, StringComparison.OrdinalIgnoreCase));
+            if (duplicate != null)
+                return false;
+
 
             entry.FileNameBytes = Enc.GetBytes(validName.FileName);
             return true;

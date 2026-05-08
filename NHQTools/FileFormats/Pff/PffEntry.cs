@@ -137,7 +137,7 @@ namespace NHQTools.FileFormats.Pff
 
                 // Re-parse filenames
                 FileNameStr = _fileNameBytes.ReadCString(0, Enc, PffVersion.FileNameLength);
-                FileNameSanitized = FileNameHelper.SanitizeAsciiFileName(FileNameStr, 15);
+                FileNameSanitized = FileNameHelper.SanitizeWindows1252FileName(FileNameStr, 15);
 
                 // Extension
                 var ext = FileNameStr.LastIndexOf('.');

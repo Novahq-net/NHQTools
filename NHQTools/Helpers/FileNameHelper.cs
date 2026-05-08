@@ -11,6 +11,7 @@ namespace NHQTools.Helpers
 
         private static readonly char[] InvalidFileSystemCharsArray = Path.GetInvalidFileNameChars();
         private static readonly HashSet<char> InvalidFileSystemChars = new HashSet<char>(InvalidFileSystemCharsArray);
+        private static readonly HashSet<int> Undefined1252CodePoints = new HashSet<int> { 0x81, 0x8D, 0x8F, 0x90, 0x9D };
         private static readonly string[] WindowsReservedNames = {
             "CON", "PRN", "AUX", "NUL",
             "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -19,6 +20,12 @@ namespace NHQTools.Helpers
         private static string RandomFileName => Path.GetRandomFileName();
         private static string RandomFileNameWithoutExt => Path.GetFileNameWithoutExtension(RandomFileName);
 
+        ////////////////////////////////////////////////////////////////////////////////////
+        public static bool IsValidWindows1252Char(char c)
+        {
+            // Must be in printable 8-bit range, not undefined in 1252, and not an invalid filesystem char
+            return c >= 32 && c <= 255 && !Undefined1252CodePoints.Contains(c) && !InvalidFileSystemChars.Contains(c);
+        }
 
         ////////////////////////////////////////////////////////////////////////////////////
         public static bool IsWindowsReservedName(string fileName)
@@ -130,6 +137,71 @@ namespace NHQTools.Helpers
         }
 
         ////////////////////////////////////////////////////////////////////////////////////
+        public static string SanitizeWindows1252FileName(string name, char replacement = '_')
+        {
+            if (string.IsNullOrEmpty(name))
+                return RandomFileNameWithoutExt;
+
+            StringBuilder sb = null;
+
+            for (var i = 0; i < name.Length; i++)
+            {
+                var c = name[i];
+                var bad = !IsValidWindows1252Char(c);
+
+                if (!bad)
+                {
+                    sb?.Append(c);
+                    continue;
+                }
+
+                if (sb == null)
+                {
+                    sb = new StringBuilder(name.Length);
+                    sb.Append(name, 0, i);
+                }
+
+                sb.Append(replacement);
+            }
+
+            var result = (sb == null ? name : sb.ToString()).Trim();
+            return result.Length > 0 && !IsWindowsReservedName(result) ? result : RandomFileNameWithoutExt;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        public static string SanitizeWindows1252FileName(string name, int maxLength, char replacement = '_')
+        {
+            if (string.IsNullOrEmpty(name))
+                return "file_" + Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+
+            var cleanName = SanitizeWindows1252FileName(name, replacement);
+
+            if (cleanName.Length <= maxLength)
+                return cleanName;
+
+            var extStart = cleanName.LastIndexOf('.');
+            if (extStart <= 0)
+            {
+                var tmp1 = cleanName.Substring(0, maxLength);
+                return IsWindowsReservedName(tmp1) ? RandomFileNameWithoutExt.PadRight(maxLength, '_').Substring(0, maxLength) : tmp1;
+            }
+
+            var ext = cleanName.Substring(extStart);
+            var extLength = ext.Length;
+
+            if (extLength >= maxLength)
+            {
+                var tmp2 = cleanName.Substring(0, maxLength);
+                return IsWindowsReservedName(tmp2) ? RandomFileNameWithoutExt.PadRight(maxLength, '_').Substring(0, maxLength) : tmp2;
+            }
+
+            var maxBaseNameLength = maxLength - extLength;
+            var newName = cleanName.Substring(0, maxBaseNameLength) + ext;
+
+            return IsWindowsReservedName(newName) ? RandomFileNameWithoutExt.PadRight(maxLength, '_').Substring(0, maxLength) : newName;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////
         #region Validation Status and Result
 
         // Validation status codes
@@ -151,7 +223,8 @@ namespace NHQTools.Helpers
             ContainsInvalidString,
             ContainsInvalidChar,
             ContainsInvalidFileSystemChar,
-            ContainsNonAscii
+            ContainsInvalidWindows1252Char,
+            ContainsNonAscii,
         }
 
         ////////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +248,7 @@ namespace NHQTools.Helpers
             public FileNameRule<int> MinLength { get; set; } = new FileNameRule<int>(1); // Default min length is 1
             public FileNameRule<int> MaxLength { get; set; } = new FileNameRule<int>(255); // Default max length is 255 for ntfs
             public FileNameRule<bool> EnforceAscii { get; set; } = new FileNameRule<bool>(false); // Default is no ASCII enforcement
+            public FileNameRule<bool> EnforceWindows1252 { get; set; } = new FileNameRule<bool>(false);
         }
 
         ////////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +431,25 @@ namespace NHQTools.Helpers
                             options.EnforceAscii.AltErrorMessage,
                             $"0x{(int)c:X}",
                             "0x20-0x7E"
+                        );
+                    }
+                }
+            }
+
+            // Windows-1252
+            if (options.EnforceWindows1252 != null && options.EnforceWindows1252.Value)
+            {
+                foreach (var c in fileName)
+                {
+                    if (!IsValidWindows1252Char(c))
+                    {
+                        return ValidationResult.Failed(
+                            ValidationStatus.ContainsInvalidWindows1252Char,
+                            fileName,
+                            $"Filename contains a character not valid in Windows-1252: 0x{(int)c:X}.",
+                            options.EnforceWindows1252.AltErrorMessage,
+                            $"0x{(int)c:X}",
+                            "Windows-1252 printable range"
                         );
                     }
                 }

@@ -438,7 +438,8 @@ Please ensure you have a backup.";
                     return FileType.Unknown;
 
                 // DF1: ITEMS.DEF and LOOP.DEF have no magic bytes but are SCR
-                if (fileName == "ITEMS.DEF" || fileName == "LOOP.DEF")
+                // DF1 has no SCR1 for ANM files. ANM is SCR1 in all games.
+                if (fileName == "ITEMS.DEF" || fileName == "LOOP.DEF" || fileName.EndsWith(".ANM"))
                     return FileType.SCR;
             }
 
