@@ -38,11 +38,16 @@ namespace NHQTools.FileFormats.Pff
     {
 
         ////////////////////////////////////////////////////////////////////////////////////
-        // Always 15 characters max for file name, 15 + null terminator
-        // DO NOT CHANGE THIS TO 16
-        public const int FileNameLength = 15;
+        // 32-byte entries: max 15 characters + 00 terminator inside the field
+        // 36-byte entries: max 16 characters, the CRC field at +32 must be 0 and acts as the terminator
+        public const int FileNameFieldLength = 16;
+        public const int FileNameLength = 15; // Legacy / 32-byte entry max
+        public const int LongFileNameLength = 16; // 36-byte entry max
         public const int VersionBytesLength = 4;
         public const string DefaultDeadSpaceStr = "<DEAD SPACE>";
+
+        public bool SupportsLongFileName => EntryLength == 36;
+        public int MaxFileNameLength => SupportsLongFileName ? LongFileNameLength : FileNameLength;
 
         ////////////////////////////////////////////////////////////////////////////////////
         // Always 20 bytes for header but read notes in PffHeader.cs
@@ -273,8 +278,10 @@ namespace NHQTools.FileFormats.Pff
                         fsWriter.BaseStream.Position = startPos;
                         fsWriter.Write(entry.DeadSpaceFlags);
 
+                        // A 16-character name reads on into +32, so the CRC field must be 0
+                        // or the game never finds the entry
                         fsWriter.BaseStream.Position = startPos + 32;
-                        fsWriter.Write(entry.CrcComputed ?? 0);
+                        fsWriter.Write(entry.IsLongFileName ? 0u : (entry.CrcComputed ?? 0));
                     };
 
                     return true;

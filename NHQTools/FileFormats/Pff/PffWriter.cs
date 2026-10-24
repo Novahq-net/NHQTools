@@ -5,6 +5,16 @@ namespace NHQTools.FileFormats.Pff
     internal static class PffWriter
     {
         ////////////////////////////////////////////////////////////////////////////////////
+        // Offsets are stored as 32-bit. Never write a wrapped value
+        private static uint ToOffset(long position)
+        {
+            if (position < 0 || position > uint.MaxValue)
+                throw new InvalidDataException("PFF exceeds the maximum size of 4GB.");
+
+            return (uint)position;
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////
         internal static void Write(PffFile pff)
         {
 
@@ -33,7 +43,7 @@ namespace NHQTools.FileFormats.Pff
                     //   throw new InvalidDataException("Entry data cannot be empty");
 
                     // Update entry offset — DataSize is kept in sync by the Data setter
-                    entry.DataOffset = (uint)writer.BaseStream.Position;
+                    entry.DataOffset = ToOffset(writer.BaseStream.Position);
 
                     if (entry.DataSize > 0)
                         // ReSharper disable once AssignNullToNotNullAttribute
@@ -41,7 +51,7 @@ namespace NHQTools.FileFormats.Pff
                 }
 
                 // Current values for header to make sure everything is aligned
-                var entryTableOffset = (uint)writer.BaseStream.Position;
+                var entryTableOffset = ToOffset(writer.BaseStream.Position);
                 var entryTableCount = entryTable.EntryCount;
 
                 // Write remaining structures

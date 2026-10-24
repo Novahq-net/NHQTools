@@ -120,37 +120,42 @@ namespace NHQTools.FileFormats.Pff
         // Setting FileNameBytes triggers parsing of the file name string
         // This keeps everything in sync when the file name has changed
         // We don't allow setting file name strings directly to avoid desyncs
-        // ***FileNameBytes will always be padded/truncated to max length***
+        // ***FileNameBytes is always a 16byte field: Name truncated to Version.MaxFileNameLength***
         internal byte[] FileNameBytes
         {
             get => _fileNameBytes;
             set
             {
-
-                // Do not allow null or empty filenames. We could allow them,
-                // but it makes no sense, and I've not encountered a PFF entry with no name yet 
                 if (value == null || value.Length <= 0)
                     throw new ArgumentException("Filename cannot be null or empty", nameof(value));
 
-                // Always pad/truncate to max length + null terminator
-                _fileNameBytes = value.RPadTruncate(PffVersion.FileNameLength + 1);
+                var max = Version?.MaxFileNameLength ?? PffVersion.FileNameLength;
 
-                // Re-parse filenames
-                FileNameStr = _fileNameBytes.ReadCString(0, Enc, PffVersion.FileNameLength);
-                FileNameSanitized = FileNameHelper.SanitizeWindows1252FileName(FileNameStr, 15);
+                // Field is always 16 bytes. Copy at most 'max' name bytes
+                var buffer = new byte[PffVersion.FileNameFieldLength];
+                Array.Copy(value, 0, buffer, 0, Math.Min(value.Length, max));
+                _fileNameBytes = buffer;
 
-                // Extension
+                FileNameStr = _fileNameBytes.ReadCString(0, Enc, max);
+                FileNameSanitized = FileNameHelper.SanitizeWindows1252FileName(FileNameStr, max);
+
+                // 16th byte in use means the name relies on the 0 CRC field at +32 as its terminator
+                IsLongFileName = _fileNameBytes[PffVersion.FileNameFieldLength - 1] != 0;
+
                 var ext = FileNameStr.LastIndexOf('.');
                 FileTypeExt = ext >= 0 ? FileNameStr.Substring(ext) : string.Empty;
 
-                // Sync the editable binding property so the grid reflects the authoritative value
                 FileNameEdit = FileNameStr;
 
-                // Clear the cached, did someone managed to type <DEAD SPACE> after all?
                 _deadSpace = null;
             }
         }
         private byte[] _fileNameBytes;
+
+        // True when the name uses all 16 bytes.
+		// The CRC field is written as 0 for these entries
+		// The game stops at the first 0 byte it encounters when reading the file name
+        public bool IsLongFileName { get; private set; }
 
         // FileNameStr is read-only to consumers, see FileNameEdit comment
         public string FileNameStr { get; private set; } // Only set via FileNameBytes
@@ -167,9 +172,11 @@ namespace NHQTools.FileFormats.Pff
         #region CRC
         public uint? CrcRead { get; internal set; } // CrcRead can be null, and can be set by importing via grid
         public uint? CrcComputed { get; private set; }
-        public bool CrcMatches => !CrcRead.HasValue || !CrcComputed.HasValue || CrcRead.Value == CrcComputed.Value;
+        public bool CrcMatches => IsLongFileName || !CrcRead.HasValue || !CrcComputed.HasValue || CrcRead.Value == CrcComputed.Value;
         public string CrcStr => !DeadSpace && (CrcRead.HasValue || CrcComputed.HasValue)
-            ? CrcMatches ? (CrcRead ?? CrcComputed).ToString() : (CrcRead ?? CrcComputed) + "*"
+            ? IsLongFileName
+                ? (CrcComputed ?? CrcRead).ToString()
+                : CrcMatches ? (CrcRead ?? CrcComputed).ToString() : (CrcRead ?? CrcComputed) + "*"
             : "N/A";
         #endregion
 

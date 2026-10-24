@@ -30,8 +30,29 @@ namespace NHQTools.FileFormats.Pff
         public byte[] RawBytes { get; private set; } // Raw byte dump of the entire entry table for debugging
         public List<PffEntry> Entries { get; } = new List<PffEntry>(); // Complete list of files contained in the PFF  
         public uint EntryCount => (uint)Entries.Count;
-        public uint TotalDataSize => (uint)Entries.Sum(e => e.DataSize);
-        public uint TotalDeadSpaceSize => (uint)Entries.Where(e => e.DeadSpace).Sum(e => e.DataSize);
+        
+        public ulong TotalDataSize
+        {
+            get
+            {
+                ulong total = 0;
+                foreach (var e in Entries)
+                    total += e.DataSize;
+                return total;
+            }
+        }
+
+        public ulong TotalDeadSpaceSize
+        {
+            get
+            {
+                ulong total = 0;
+                foreach (var e in Entries)
+                    if (e.DeadSpace)
+                        total += e.DataSize;
+                return total;
+            }
+        }
 
         // Cached distinct filter sets, rebuilt via FileTypeFilterCache()
         public HashSet<FileType> DistinctFileTypes { get; private set; } = new HashSet<FileType>();
@@ -81,7 +102,7 @@ namespace NHQTools.FileFormats.Pff
             var validName = FileNameHelper.ValidFileName(newFileName, new FileNameHelper.ValidationOptions
             {
                 EnforceWindows1252 = new FileNameHelper.FileNameRule<bool>(true),
-                MaxLength = new FileNameHelper.FileNameRule<int>(PffVersion.FileNameLength)
+                MaxLength = new FileNameHelper.FileNameRule<int>(Version.MaxFileNameLength)
             });
 
             if (!validName.IsValid)
@@ -105,12 +126,19 @@ namespace NHQTools.FileFormats.Pff
         // Replaces the entry data from external source with a clone
         public void SetEntryData(PffEntry entry, byte[] data, uint? timestamp = null)
         {
-            if (data == null || data.Length == 0)
-                throw new ArgumentException("File data cannot be empty or null", nameof(data));
+            if (data == null)
+                throw new ArgumentNullException(nameof(data), "File data cannot be null");
 
-            // Clone to avoid external modification
+            // Projected archive size with this data replacing the current data.
+            // A new entry (not yet in the table) also adds one table record.
+            var isNew = !Entries.Contains(entry);
+            var projected = Pff.EstimatedSaveSize(true, (ulong)data.Length, isNew ? 1u : 0u) - (isNew ? 0UL : entry.DataSize);
+            if (projected > PffFile.MaxArchiveSize)
+                throw new InvalidDataException("This change would exceed the maximum PFF size (4GB).");
+
+            // Clone to avoid external modification. 0-byte entries are allowed
             // Data setter triggers CRC, DataSize, FileType
-            entry.Data = (byte[])data.Clone();
+            entry.Data = data.Length == 0 ? Array.Empty<byte>() : (byte[])data.Clone();
 
             // Forced changes for external data modification
             // Data sets CrcComputed, since it's new data, set CrcRead to match
@@ -160,13 +188,18 @@ namespace NHQTools.FileFormats.Pff
             reader.BaseStream.Position = header.EntryTableOffset;
 
             // Calculate total entry table size
-            var entryTableSize = (int)(header.EntryTableCount * header.EntryRecordLength);
+            // Check in 64-bit so a damaged header can't wrap around
+            var entryTableSize64 = (ulong)header.EntryTableCount * header.EntryRecordLength;
+            if (entryTableSize64 > int.MaxValue)
+                throw new InvalidDataException($"Entry table size is invalid: {entryTableSize64}");
+
+            var entryTableSize = (int)entryTableSize64;
 
             // Validate we have enough stream before reading. We read the entire table at once
             // and process it in memory. This keeps it simple and allows easy CRC calculation
             var streamLength = reader.BaseStream.Length;
             
-            if (reader.BaseStream.Position + entryTableSize > streamLength)
+            if ((ulong)reader.BaseStream.Position + (ulong)entryTableSize > (ulong)streamLength)
                 throw new EndOfStreamException("Entry table size exceeds stream length");
 
             // Read entire entry table to memory for processing
@@ -205,7 +238,17 @@ namespace NHQTools.FileFormats.Pff
                     entry.DataOffset = msReader.ReadUInt32();
                     entry.DataSize = msReader.ReadUInt32();
                     entry.Timestamp = msReader.ReadUInt32();
-                    entry.FileNameBytes = msReader.ReadBytes(PffVersion.FileNameLength);
+                    
+                    // Read the full 16-byte name field
+                    var nameBytes = msReader.ReadBytes(PffVersion.FileNameFieldLength);
+
+                    // 32-byte entries never hold a 16-character name. A 16th byte below 0x20
+                    // is junk left by pack 3.0.55, so treat the name as 15 characters.
+                    // Clearing it here makes the next save write a clean field
+                    if (!version.SupportsLongFileName || nameBytes[PffVersion.FileNameFieldLength - 1] < 0x20)
+                        nameBytes[PffVersion.FileNameFieldLength - 1] = 0;
+
+                    entry.FileNameBytes = nameBytes;
                 }
 
                 // Don't check for 0 data size here as some entries can have 0 size (LW-Mods.pff)
@@ -303,7 +346,7 @@ namespace NHQTools.FileFormats.Pff
             writer.Write(entry.DataOffset);
             writer.Write(entry.DataSize);
             writer.Write(entry.Timestamp);
-            writer.Write(fileName, 0, PffVersion.FileNameLength + 1); // Always enforce full length + null
+            writer.Write(fileName, 0, PffVersion.FileNameFieldLength); // Always the full 16-byte field
 
             // Use version specific writer for any variable fields
             version.EntryRecordWriter(writer, entry, startPos);

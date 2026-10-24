@@ -69,8 +69,33 @@ namespace NHQTools.FileFormats.Pff
 
         // Status
         public uint EntryCount => EntryTable?.EntryCount ?? 0;
-        public uint TotalDataSize => EntryTable.TotalDataSize;
-        public uint TotalDeadSpaceSize => EntryTable.TotalDeadSpaceSize;
+        public ulong TotalDataSize => EntryTable?.TotalDataSize ?? 0;
+        public ulong TotalDeadSpaceSize => EntryTable?.TotalDeadSpaceSize ?? 0;
+        public const ulong MaxArchiveSize = uint.MaxValue;
+        public const ulong StockGameMaxArchiveSize = int.MaxValue;
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        public ulong EstimatedSaveSize(bool preserveDeadSpace = true, ulong extraData = 0, uint extraEntries = 0)
+        {
+            if (Version == null || EntryTable == null)
+                return 0;
+
+            ulong data = extraData;
+            ulong entries = extraEntries;
+
+            foreach (var e in EntryTable.Entries)
+            {
+                if (!preserveDeadSpace && e.DeadSpace)
+                    continue;
+
+                data += e.DataSize;
+                entries++;
+            }
+
+            var tableCrc = Version.HasEntryTableCrc ? 4UL : 0UL;
+
+            return PffHeader.Length + data + entries * Version.EntryLength + tableCrc + (ulong)Version.FooterLength;
+        }
 
         // Crc
         public bool EntryTableCrcMatches => EntryTable?.CrcMatches ?? true;
@@ -196,8 +221,12 @@ namespace NHQTools.FileFormats.Pff
             if (Footer == null)
                 throw new InvalidOperationException("Footer must be populated before saving.");
 
+            var estimatedSize = EstimatedSaveSize(preserveDeadSpace);
+            if (estimatedSize > MaxArchiveSize)
+                throw new InvalidDataException($"The PFF would be {estimatedSize:N0} bytes, which exceeds the maximum PFF size (4GB).");
+
             if (!preserveDeadSpace)
-                EntryTable.Entries.RemoveAll(e => e.DeadSpace || e.DataSize == 0);
+                EntryTable.Entries.RemoveAll(e => e.DeadSpace);
 
             // Write
             PffWriter.Write(this);
@@ -224,20 +253,20 @@ namespace NHQTools.FileFormats.Pff
             if (!FileSystemHelper.CanReadFile(file.FullName))
                 throw new UnauthorizedAccessException($"Cannot read '{file.FullName}' due to insufficient permission.");
 
-            if (file.Length <= 0)
-                throw new InvalidDataException($"File '{file.Name}' cannot be zero bytes.");
-
             // Check size limit (2GB is the max for the byte array from ReadAllBytes)
             if (file.Length > int.MaxValue)
                 throw new InvalidDataException($"File '{file.Name}' cannot be greater than 2GB.");
 
-            if(file.Length + TotalDataSize > int.MaxValue)
-                throw new InvalidDataException($"Importing '{file.Name}' would exceed maximum total data size (2GB).");
+            if (EstimatedSaveSize(true, (ulong)file.Length, 1) > MaxArchiveSize)
+                throw new InvalidDataException($"Importing '{file.Name}' would exceed the maximum PFF size (4GB).");
+
+            var maxLength = Version.MaxFileNameLength;
 
             var validFileName = FileNameHelper.ValidFileName(file.Name, new FileNameHelper.ValidationOptions
             {
-                MaxLength = new FileNameHelper.FileNameRule<int>(15),
-                EnforceAscii = new FileNameHelper.FileNameRule<bool>(true)
+                MaxLength = new FileNameHelper.FileNameRule<int>(maxLength,
+                    $"Filename is {file.Name.Length} characters. This archive ({VersionStrExt}) allows a maximum of {maxLength}."),
+                EnforceWindows1252 = new FileNameHelper.FileNameRule<bool>(true)
             });
 
             if (!validFileName.IsValid)
@@ -277,8 +306,8 @@ namespace NHQTools.FileFormats.Pff
             if (!FileSystemHelper.CanWriteDirectory(destDir))
                 throw new DirectoryNotFoundException($"Destination directory '{destDir}' not found or no permission.");
 
-            if (entry == null || entry.DataSize == 0 || entry.DeadSpace)
-                throw new InvalidOperationException($"Entry '{entry?.FileNameStr}' cannot be exported because it is invalid or empty.");
+            if (entry == null || entry.DeadSpace)
+                throw new InvalidOperationException($"Entry '{entry?.FileNameStr}' cannot be exported because it is invalid or deleted.");
 
             if (string.IsNullOrEmpty(entry.FileNameSanitized))
                 throw new InvalidOperationException($"Entry '{entry.FileNameStr}' cannot be exported because it has an invalid name.");

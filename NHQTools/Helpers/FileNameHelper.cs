@@ -20,11 +20,27 @@ namespace NHQTools.Helpers
         private static string RandomFileName => Path.GetRandomFileName();
         private static string RandomFileNameWithoutExt => Path.GetFileNameWithoutExtension(RandomFileName);
 
+        private static readonly Encoding Win1252Strict =
+            Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+
         ////////////////////////////////////////////////////////////////////////////////////
+        // Validates by Windows-1252 byte, not by Unicode code point
+        // Accepts € Š Œ Ž š œ ž Ÿ ™ … ½ etc. Rejects U+0080-U+009F controls and
+        // anything 1252 cannot encode (these would otherwise silently become '?')
         public static bool IsValidWindows1252Char(char c)
         {
-            // Must be in printable 8-bit range, not undefined in 1252, and not an invalid filesystem char
-            return c >= 32 && c <= 255 && !Undefined1252CodePoints.Contains(c) && !InvalidFileSystemChars.Contains(c);
+            if (c < 32 || InvalidFileSystemChars.Contains(c))
+                return false;
+
+            try
+            {
+                var b = Win1252Strict.GetBytes(new[] { c });
+                return b.Length == 1 && !Undefined1252CodePoints.Contains(b[0]);
+            }
+            catch (EncoderFallbackException)
+            {
+                return false;
+            }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////

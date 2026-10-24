@@ -28,7 +28,7 @@ namespace NHQTools.FileFormats.Pff
                 pff.Version = version;
 
                 // Validate we have enough file to read the entry table
-                if (header.EntryTableOffset + header.EntryRecordLength * header.EntryTableCount > stream.Length)
+                if ((ulong)header.EntryTableOffset + (ulong)header.EntryRecordLength * header.EntryTableCount > (ulong)stream.Length)
                     throw new EndOfStreamException("Entry table exceeds stream length");
 
                 var entryTable = PffEntryTable.Read(reader, header, pff);
